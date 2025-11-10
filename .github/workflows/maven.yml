@@ -1,0 +1,39 @@
+name: Maven-Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build with Maven
+        run: mvn clean package
+
+      - name: Deploy WAR to Tomcat
+        run: |
+          scp -o StrictHostKeyChecking=no -P ${{ secrets.PORT }} target/*.war ${{ secrets.USERNAME }}@${{ secrets.HOST }}:/opt/tomcat/webapps/
+        env:
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PASSWORD: ${{ secrets.PASSWORD }}
+          PORT: ${{ secrets.PORT }}
+
+      - name: Invoke Jenkins Deployment Job
+        uses: appleboy/jenkins-action@master
+        with:
+          url: "http://<JENKINS_SERVER>:8080"
+          user: "admin"
+          token: ${{ secrets.JENKINS_TOKEN }}
+          job: "TomcatDeployment"
